@@ -10,8 +10,8 @@ namespace WebApi.Controllers;
 public class PatientControllers(PatientService patientService) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAllAsync([FromQuery] PatientFilter filter)
-        => Ok(await patientService.GetAllAsync(filter));
+public async Task<IActionResult> GetAllAsync([FromQuery] PatientFilter filter)
+    => Ok(await patientService.GetAllAsync(filter));
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetByIdAsync(int id)

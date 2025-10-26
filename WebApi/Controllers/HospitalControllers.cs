@@ -10,8 +10,8 @@ namespace WebApi.Controllers;
 public class HospitalControllers(HospitalService hospital) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAllAsync([FromQuery] HospitalFilter filter)
-        => Ok(await hospital.GetAllAsync(filter));
+ public async Task<IActionResult> GetAllAsync([FromQuery] HospitalFilter filter)
+    => Ok(await hospital.GetAllAsync(filter));
 
     [HttpGet("by-id")]
     public async Task<IActionResult> GetByIdAsync(string registrationNumber)
@@ -24,7 +24,7 @@ public class HospitalControllers(HospitalService hospital) : ControllerBase
     public async Task<IActionResult> UpdateAsync(string registrationNumber, [FromBody] UpdateHospitalDTO DTO)
         => Ok(await hospital.UpdateAsync(registrationNumber, DTO));
 
-    [HttpDelete("{id:int}")]
+   [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAsync(string id)
         => Ok(await hospital.DeleteAsync(id));
 }

@@ -5,145 +5,145 @@ using Domain.Response;
 using Infrastructure.Data;
 using Infrastructure.Interfaces;
 
-namespace Infrastructure.Services;
-
-public class ReportService(DataContext context) : IReportService
+namespace Infrastructure.Services
 {
-    // 🔹 Универсальный безопасный метод для конвертации строки в enum
-    private static Territories? ParseTerritorySafe(string input)
+    public class ReportService(DataContext context) : IReportService
     {
-        if (string.IsNullOrWhiteSpace(input))
-            return null;
-
-        // Enum.TryParse с ignoreCase позволяет игнорировать регистр
-        if (Enum.TryParse<Territories>(input, ignoreCase: true, out var result))
-            return result;
-
-        return null;
-    }
-
-    // 🔹 Основной метод подсчёта статистики по конкретной территории
-    private async Task<HospitalReportDto> GetStatisticsByTerritoryAsync(
-        Territories territory, 
-        DateTime dateFrom, 
-        DateTime dateTo)
-    {
-        var patientsQuery = context.Patients
-            .Where(p => !p.IsDeleted &&
-                        p.TerritoryName == territory &&
-                        p.RecordDate.Date >= dateFrom.Date &&
-                        p.RecordDate.Date <= dateTo.Date);
-
-        int totalPatients = await patientsQuery.CountAsync();
-
-        int totalRecovered = await patientsQuery
-            .Where(p => p.RecoveryDate != null &&
-                        p.RecoveryDate.Value.Date >= dateFrom.Date &&
-                        p.RecoveryDate.Value.Date <= dateTo.Date)
-            .CountAsync();
-
-        int fluAndColdTotal = await patientsQuery
-            .Where(p => p.Disease == DiseaseType.Flu || p.Disease == DiseaseType.Cold)
-            .CountAsync();
-
-        int fluAndColdRecovered = await patientsQuery
-            .Where(p => (p.Disease == DiseaseType.Flu || p.Disease == DiseaseType.Cold) &&
-                        p.RecoveryDate != null)
-            .CountAsync();
-
-        int typhoidTotal = await patientsQuery
-            .Where(p => p.Disease == DiseaseType.Fever)
-            .CountAsync();
-
-        int typhoidRecovered = await patientsQuery
-            .Where(p => p.Disease == DiseaseType.Fever && p.RecoveryDate != null)
-            .CountAsync();
-
-        int hepatitisTotal = await patientsQuery
-            .Where(p => p.Disease == DiseaseType.Hepatitis)
-            .CountAsync();
-
-        int hepatitisRecovered = await patientsQuery
-            .Where(p => p.Disease == DiseaseType.Hepatitis && p.RecoveryDate != null)
-            .CountAsync();
-
-        int otherDiseasesTotal = await patientsQuery
-            .Where(p => p.Disease != DiseaseType.Flu &&
-                        p.Disease != DiseaseType.Cold &&
-                        p.Disease != DiseaseType.Fever &&
-                        p.Disease != DiseaseType.Hepatitis)
-            .CountAsync();
-
-        int otherDiseasesRecovered = await patientsQuery
-            .Where(p => p.Disease != DiseaseType.Flu &&
-                        p.Disease != DiseaseType.Cold &&
-                        p.Disease != DiseaseType.Fever &&
-                        p.Disease != DiseaseType.Hepatitis &&
-                        p.RecoveryDate != null)
-            .CountAsync();
-
-        return new HospitalReportDto
+        private static Territories? ParseTerritorySafe(string input)
         {
-            PatientsTotal = totalPatients,
-            RecoveredTotal = totalRecovered,
-            FluAndColdCountTotal = fluAndColdTotal,
-            FluAndColdCountRecovered = fluAndColdRecovered,
-            TyphoidCountTotal = typhoidTotal,
-            TyphoidCountRecovered = typhoidRecovered,
-            HepatitisCountTotal = hepatitisTotal,
-            HepatitisCountRecovered = hepatitisRecovered,
-            OtherDiseasesTotal = otherDiseasesTotal,
-            OtherDiseasesRecovered = otherDiseasesRecovered
-        };
-    }
+            if (string.IsNullOrWhiteSpace(input)) return null;
+            return Enum.TryParse<Territories>(input, true, out var result) ? result : null;
+        }
 
-    // 🔹 Новый универсальный метод: принимает название территории (любой регистр)
-    public async Task<Response<HospitalReportDto>> GetStatisticsByTerritoryNameAsync(
-        string territoryName, 
-        DateTime from, 
-        DateTime to)
-    {
-        var territory = ParseTerritorySafe(territoryName);
-        if (territory is null)
-            return new Response<HospitalReportDto>(System.Net.HttpStatusCode.NotFound,"Территория не найдена");
-
-        var report = await GetStatisticsByTerritoryAsync(territory.Value, from, to);
-        return new Response<HospitalReportDto>(report);
-    }
-
-    // 🔹 Старые методы — тоже продолжают работать (через тот же общий метод)
-    public async Task<HospitalReportDto> GetStatisticsFirdavsi(DateTime from, DateTime to)
-        => await GetStatisticsByTerritoryAsync(Territories.Firdavsi, from, to);
-
-    public async Task<HospitalReportDto> GetStatisticsShohmansur(DateTime from, DateTime to)
-        => await GetStatisticsByTerritoryAsync(Territories.Shohmansur, from, to);
-
-    public async Task<HospitalReportDto> GetStatisticsSino(DateTime from, DateTime to)
-        => await GetStatisticsByTerritoryAsync(Territories.Sino, from, to);
-
-    public async Task<HospitalReportDto> GetStatisticsSomoni(DateTime from, DateTime to)
-        => await GetStatisticsByTerritoryAsync(Territories.Somoni, from, to);
-
-    // 🔹 Сводная статистика по всем территориям
-    public async Task<HospitalReport> GetStatisticsAllTerritories(DateTime from, DateTime to)
-    {
-        from = DateTime.SpecifyKind(from, DateTimeKind.Utc);
-        to = DateTime.SpecifyKind(to, DateTimeKind.Utc);
-
-        return new HospitalReport
+        private async Task<HospitalReportExtendedDto> GetStatisticsByTerritoryAsync(Territories territory, DateTime from, DateTime to)
         {
-            PatientsTotalAllTerritories = await context.Patients
-                .Where(p => p.RecordDate.Date >= from.Date)
-                .CountAsync(),
+            var patientsQuery = context.Patients
+                .Where(p => !p.IsDeleted &&
+                            p.TerritoryName == territory &&
+                            p.RecordDate.Date >= from.Date &&
+                            p.RecordDate.Date <= to.Date);
 
-            RecoveredTotalAllTerritories = await context.Patients
-                .Where(p => p.RecoveryDate != null &&
-                            p.RecoveryDate.Value.Date >= from.Date &&
-                            p.RecoveryDate.Value.Date <= to.Date)
-                .CountAsync(),
+            return new HospitalReportExtendedDto
+            {
+                PatientsTotal = await patientsQuery.CountAsync(),
+                RecoveredTotal = await patientsQuery.CountAsync(p => p.RecoveryDate != null &&
+                    p.RecoveryDate.Value.Date >= from.Date && p.RecoveryDate.Value.Date <= to.Date),
 
-            DateFrom = from,
-            DateTo = to
-        };
+                FluAndColdTotal = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Flu || p.Disease == DiseaseType.Cold),
+                FluAndColdRecovered = await patientsQuery.CountAsync(p => (p.Disease == DiseaseType.Flu || p.Disease == DiseaseType.Cold) && p.RecoveryDate != null),
+
+                TyphoidTotal = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Fever),
+                TyphoidRecovered = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Fever && p.RecoveryDate != null),
+
+                HepatitisTotal = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Hepatitis),
+                HepatitisRecovered = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Hepatitis && p.RecoveryDate != null),
+
+                OtherDiseasesTotal = await patientsQuery.CountAsync(p =>
+                    p.Disease != DiseaseType.Flu &&
+                    p.Disease != DiseaseType.Cold &&
+                    p.Disease != DiseaseType.Fever &&
+                    p.Disease != DiseaseType.Hepatitis),
+
+                OtherDiseasesRecovered = await patientsQuery.CountAsync(p =>
+                    p.Disease != DiseaseType.Flu &&
+                    p.Disease != DiseaseType.Cold &&
+                    p.Disease != DiseaseType.Fever &&
+                    p.Disease != DiseaseType.Hepatitis &&
+                    p.RecoveryDate != null)
+            };
+        }
+
+        public async Task<Response<HospitalReportExtendedDto>> GetStatisticsByTerritoryNameAsync(string territoryName, DateTime from, DateTime to)
+        {
+            var territory = ParseTerritorySafe(territoryName);
+            if (territory is null)
+                return new Response<HospitalReportExtendedDto>(System.Net.HttpStatusCode.NotFound, "Территория не найдена");
+
+            var report = await GetStatisticsByTerritoryAsync(territory.Value, from, to);
+            return new Response<HospitalReportExtendedDto>(report);
+        }
+
+        public async Task<HospitalReportExtendedDto> GetStatisticsFirdavsi(DateTime from, DateTime to)
+            => await GetStatisticsByTerritoryAsync(Territories.Firdavsi, from, to);
+
+        public async Task<HospitalReportExtendedDto> GetStatisticsShohmansur(DateTime from, DateTime to)
+            => await GetStatisticsByTerritoryAsync(Territories.Shohmansur, from, to);
+
+        public async Task<HospitalReportExtendedDto> GetStatisticsSino(DateTime from, DateTime to)
+            => await GetStatisticsByTerritoryAsync(Territories.Sino, from, to);
+
+        public async Task<HospitalReportExtendedDto> GetStatisticsSomoni(DateTime from, DateTime to)
+            => await GetStatisticsByTerritoryAsync(Territories.Somoni, from, to);
+
+        public async Task<HospitalReportExtendedDto> GetStatisticsAllTerritories(DateTime from, DateTime to)
+        {
+            from = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+            to = DateTime.SpecifyKind(to, DateTimeKind.Utc);
+
+            var patientsQuery = context.Patients
+                .Where(p => !p.IsDeleted &&
+                            p.RecordDate.Date >= from.Date &&
+                            p.RecordDate.Date <= to.Date);
+
+            return new HospitalReportExtendedDto
+            {
+                PatientsTotal = await patientsQuery.CountAsync(),
+                RecoveredTotal = await patientsQuery.CountAsync(p => p.RecoveryDate != null &&
+                    p.RecoveryDate.Value.Date >= from.Date && p.RecoveryDate.Value.Date <= to.Date),
+
+                FluAndColdTotal = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Flu || p.Disease == DiseaseType.Cold),
+                FluAndColdRecovered = await patientsQuery.CountAsync(p => (p.Disease == DiseaseType.Flu || p.Disease == DiseaseType.Cold) && p.RecoveryDate != null),
+
+                TyphoidTotal = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Fever),
+                TyphoidRecovered = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Fever && p.RecoveryDate != null),
+
+                HepatitisTotal = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Hepatitis),
+                HepatitisRecovered = await patientsQuery.CountAsync(p => p.Disease == DiseaseType.Hepatitis && p.RecoveryDate != null),
+
+                OtherDiseasesTotal = await patientsQuery.CountAsync(p =>
+                    p.Disease != DiseaseType.Flu &&
+                    p.Disease != DiseaseType.Cold &&
+                    p.Disease != DiseaseType.Fever &&
+                    p.Disease != DiseaseType.Hepatitis),
+
+                OtherDiseasesRecovered = await patientsQuery.CountAsync(p =>
+                    p.Disease != DiseaseType.Flu &&
+                    p.Disease != DiseaseType.Cold &&
+                    p.Disease != DiseaseType.Fever &&
+                    p.Disease != DiseaseType.Hepatitis &&
+                    p.RecoveryDate != null)
+            };
+        }
+
+        // ✅ Новый метод, возвращающий массив данных по всем территориям
+        public async Task<List<HospitalReportExtendedByTerritoryDto>> GetStatisticsAllTerritoriesExtended(DateTime from, DateTime to)
+        {
+            from = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+            to = DateTime.SpecifyKind(to, DateTimeKind.Utc);
+
+            var territories = Enum.GetValues<Territories>();
+            var reports = new List<HospitalReportExtendedByTerritoryDto>();
+
+            foreach (var territory in territories)
+            {
+                var stats = await GetStatisticsByTerritoryAsync(territory, from, to);
+                reports.Add(new HospitalReportExtendedByTerritoryDto
+                {
+                    Territory = territory.ToString(),
+                    PatientsTotal = stats.PatientsTotal,
+                    RecoveredTotal = stats.RecoveredTotal,
+                    FluAndColdTotal = stats.FluAndColdTotal,
+                    FluAndColdRecovered = stats.FluAndColdRecovered,
+                    TyphoidTotal = stats.TyphoidTotal,
+                    TyphoidRecovered = stats.TyphoidRecovered,
+                    HepatitisTotal = stats.HepatitisTotal,
+                    HepatitisRecovered = stats.HepatitisRecovered,
+                    OtherDiseasesTotal = stats.OtherDiseasesTotal,
+                    OtherDiseasesRecovered = stats.OtherDiseasesRecovered
+                });
+            }
+
+            return reports;
+        }
     }
 }
