@@ -6,7 +6,7 @@ WORKDIR /src
 COPY . .
 
 # Путь к csproj относительно build context
-RUN dotnet publish "Back-end Hospital/Hospital_System/WebApi/WebApi.csproj" -c Release -o /app/publish
+RUN dotnet publish "WebApi/WebApi.csproj" -c Release -o /app/publish
 
 # ---------- Runtime stage ----------
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
