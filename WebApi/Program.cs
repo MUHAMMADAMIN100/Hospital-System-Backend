@@ -8,15 +8,15 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
+// CORS — разрешаем все источники для фронтенда
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:3000")
+            .AllowAnyOrigin()
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
     });
 });
 
@@ -44,5 +44,11 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseStaticFiles();
 app.UseCors("AllowFrontend");
+
 app.MapControllers();
+
+// Render использует переменную PORT
+var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+app.Urls.Add($"http://*:{port}");
+
 app.Run();
