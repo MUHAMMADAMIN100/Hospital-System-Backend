@@ -20,7 +20,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-var connection = builder.Configuration.GetConnectionString("DefaultConnection");
+// Получаем строку подключения: локально из appsettings.Development.json, на Render из переменной окружения
+var connection = builder.Configuration.GetConnectionString("DefaultConnection")
+                 ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+                 ?? throw new InvalidOperationException("No database connection string configured.");
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -47,8 +50,8 @@ app.UseCors("AllowFrontend");
 
 app.MapControllers();
 
-// Render использует переменную PORT
-var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+// Render использует переменную PORT, локально используем 5000
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
 app.Urls.Add($"http://*:{port}");
 
 app.Run();
