@@ -8,7 +8,7 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CORS — разрешаем все источники для фронтенда
+// CORS — разрешаем фронтенду доступ
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -25,32 +25,42 @@ var connection = builder.Configuration.GetConnectionString("DefaultConnection")
                  ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                  ?? throw new InvalidOperationException("No database connection string configured.");
 
+// Сервисы
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-
+builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(InfrastructureProfile));
 builder.Services.AddInfrastructure();
-builder.Services.AddSwaggerConfiguration();
 builder.Services.AddDbContext<DataContext>(options =>
     options.UseNpgsql(connection));
-
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
+// Автоматически применяем миграции при старте
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<DataContext>();
+    db.Database.Migrate();
+}
+
+// Swagger только в Development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// Middleware
 app.UseRouting();
 app.UseStaticFiles();
 app.UseCors("AllowFrontend");
+app.UseAuthorization();
 
+// Контроллеры
 app.MapControllers();
 
-// Render использует переменную PORT, локально используем 5000
+// Render использует PORT, локально 5000
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
 app.Urls.Add($"http://*:{port}");
 
